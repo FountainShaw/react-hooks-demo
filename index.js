@@ -78,7 +78,7 @@ function App() {
   return {
     click() {
       updateNum(num => num + 1);
-      updateCount(count => count + 2)
+      updateCount(count => count + 2);
     }
   };
 }
