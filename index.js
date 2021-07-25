@@ -1,32 +1,36 @@
+function App() {
+  const [count, setCount] = useState(0);
+  const [num, setNum] = useState(0);
+
+  console.log(`count is : ${count}`);
+  console.log(`num is : ${num}`);
+
+  return {
+    click() {
+      setCount(n => n + 1);
+      setCount(n => n * 10);
+
+      setNum(n => n + 3);
+      setNum(n => n * 3);
+    }
+  };
+}
+
+const fiber = {
+  stateNode: App,
+  memorizedState: null
+};
+
 let workInProgressHook;
 let isMount = true;
 
-const fiber = {
-  memoizedState: null,
-  stateNode: App
-};
-
 function schedule() {
-  workInProgressHook = fiber.memoizedState;
+  workInProgressHook = fiber.memorizedState;
+
   const app = fiber.stateNode();
   isMount = false;
+
   return app;
-}
-
-function dispatchAction(queue, action) {
-  const update = {
-    action,
-    next: null
-  };
-  if (queue.pending === null) {
-    update.next = update;
-  } else {
-    update.next = queue.pending.next;
-    queue.pending.next = update;
-  }
-  queue.pending = update;
-
-  schedule();
 }
 
 function useState(initialState) {
@@ -34,24 +38,26 @@ function useState(initialState) {
 
   if (isMount) {
     hook = {
+      memorizedState: initialState,
+      next: null,
       queue: {
         pending: null
-      },
-      memoizedState: initialState,
-      next: null
+      }
     };
-    if (!fiber.memoizedState) {
-      fiber.memoizedState = hook;
+
+    if (!fiber.memorizedState) {
+      fiber.memorizedState = hook;
     } else {
       workInProgressHook.next = hook;
     }
+
     workInProgressHook = hook;
   } else {
     hook = workInProgressHook;
     workInProgressHook = workInProgressHook.next;
   }
 
-  let baseState = hook.memoizedState;
+  let baseState = hook.memorizedState;
   if (hook.queue.pending) {
     let firstUpdate = hook.queue.pending.next;
 
@@ -63,24 +69,27 @@ function useState(initialState) {
 
     hook.queue.pending = null;
   }
-  hook.memoizedState = baseState;
+  hook.memorizedState = baseState;
 
   return [baseState, dispatchAction.bind(null, hook.queue)];
 }
 
-function App() {
-  const [num, updateNum] = useState(0);
-  const [count, updateCount] = useState(0);
-
-  console.log(`${isMount ? 'mount' : 'update'} num: `, num);
-  console.log(`${isMount ? 'mount' : 'update'} count: `, count);
-
-  return {
-    click() {
-      updateNum(num => num + 1);
-      updateCount(count => count + 2);
-    }
+function dispatchAction(queue, action) {
+  const update = {
+    action,
+    next: null
   };
+
+  if (!queue.pending) {
+    update.next = update;
+  } else {
+    update.next = queue.pending.next;
+    queue.pending.next = update;
+  }
+
+  queue.pending = update;
+
+  schedule();
 }
 
 window.app = schedule();
